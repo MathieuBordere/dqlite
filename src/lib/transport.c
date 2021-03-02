@@ -84,35 +84,42 @@ int transport__stream(struct uv_loop_s *loop,
 		case UV_TCP:
 			tcp = raft_malloc(sizeof *tcp);
 			if (tcp == NULL) {
+                                fprintf(stderr, "transport__stream tcp malloc fail\n"); fflush(stderr);
 				return DQLITE_NOMEM;
 			}
 			rv = uv_tcp_init(loop, tcp);
 			assert(rv == 0);
 			rv = uv_tcp_open(tcp, fd);
 			if (rv != 0) {
+                                fprintf(stderr, "transport__stream uv_tcp_open %d\n", rv); fflush(stderr);
 				raft_free(tcp);
 				return TRANSPORT__BADSOCKET;
 			}
 			*stream = (struct uv_stream_s *)tcp;
+                        fprintf(stderr, "transport__stream tcp open success\n"); fflush(stderr);
 			break;
 		case UV_NAMED_PIPE:
 			pipe = raft_malloc(sizeof *pipe);
 			if (pipe == NULL) {
+                                fprintf(stderr, "transport__stream pipe malloc fail\n"); fflush(stderr);
 				return DQLITE_NOMEM;
 			}
 			rv = uv_pipe_init(loop, pipe, 0);
 			assert(rv == 0);
 			rv = uv_pipe_open(pipe, fd);
 			if (rv != 0) {
+                                fprintf(stderr, "transport__stream pipe open fail %d\n", rv); fflush(stderr);
 				raft_free(pipe);
 				return TRANSPORT__BADSOCKET;
 			}
 			*stream = (struct uv_stream_s *)pipe;
+                        fprintf(stderr, "transport__stream pipe open success\n"); fflush(stderr);
 			break;
 		default:
 			return TRANSPORT__BADSOCKET;
 	};
 
+        fprintf(stderr, "transport__stream success\n"); fflush(stderr);
 	return 0;
 }
 

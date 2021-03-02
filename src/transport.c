@@ -68,10 +68,12 @@ static void connect_work_cb(uv_work_t *work)
 	size_t n2;
 	int rv;
 
+        fprintf(stderr, "connect_work_cb id:%llu %s\n", r->id, r->address); fflush(stderr);
 	/* Establish a connection to the other node using the provided connect
 	 * function. */
 	rv = i->connect.f(i->connect.arg, r->address, &r->fd);
 	if (rv != 0) {
+                fprintf(stderr, "connect_work_cb connect fail rv:%d id:%llu %s\n", rv, r->id, r->address); fflush(stderr);
 		rv = RAFT_NOCONNECTION;
 		goto err;
 	}
@@ -80,6 +82,7 @@ static void connect_work_cb(uv_work_t *work)
 	protocol = byte__flip64(DQLITE_PROTOCOL_VERSION);
 	rv = (int)write(r->fd, &protocol, sizeof protocol);
 	if (rv != sizeof protocol) {
+                fprintf(stderr, "connect_work_cb HS fail rv:%d id:%llu %s\n", rv, r->id, r->address); fflush(stderr);
 		rv = RAFT_NOCONNECTION;
 		goto err_after_connect;
 	}
@@ -99,6 +102,7 @@ static void connect_work_cb(uv_work_t *work)
 
 	buf = sqlite3_malloc64(n);
 	if (buf == NULL) {
+                fprintf(stderr, "connect_work_cb buf fail rv:%d id:%llu %s\n", rv, r->id, r->address); fflush(stderr);
 		rv = RAFT_NOCONNECTION;
 		goto err_after_connect;
 	}
@@ -111,10 +115,12 @@ static void connect_work_cb(uv_work_t *work)
 	sqlite3_free(buf);
 
 	if (rv != (int)n) {
+                fprintf(stderr, "connect_work_cb write fail rv:%d id:%llu %s\n", rv, r->id, r->address); fflush(stderr);
 		rv = RAFT_NOCONNECTION;
 		goto err_after_connect;
 	}
 
+        fprintf(stderr, "connect_work_cb success rv:%d id:%llu %s\n", rv, r->id, r->address); fflush(stderr);
 	r->status = 0;
 	return;
 
@@ -132,19 +138,23 @@ static void connect_after_work_cb(uv_work_t *work, int status)
 	struct uv_stream_s *stream = NULL;
 	int rv;
 
+        fprintf(stderr, "connect_after_work_cb id:%llu status:%d %s\n", r->id, status, r->address); fflush(stderr);
 	assert(status == 0);
 
 	if (r->status != 0) {
+                fprintf(stderr, "connect_after_work_cb id:%llu r->status:%d %s\n", r->id, r->status, r->address); fflush(stderr);
 		goto out;
 	}
 
 	rv = transport__stream(i->loop, r->fd, &stream);
 	if (rv != 0) {
+                fprintf(stderr, "connect_after_work_cb transport__stream failed id:%llu rv:%d %s\n", r->id, rv, r->address); fflush(stderr);
 		r->status = RAFT_NOCONNECTION;
 		close(r->fd);
 		goto out;
 	}
 out:
+        fprintf(stderr, "connect_after_work_cb out id:%llu %s\n", r->id, r->address); fflush(stderr);
 	r->req->cb(r->req, stream, r->status);
 	sqlite3_free(r);
 }
@@ -155,6 +165,7 @@ static int impl_connect(struct raft_uv_transport *transport,
 			const char *address,
 			raft_uv_connect_cb cb)
 {
+        fprintf(stderr, "impl__connect id:%llu %s\n", id, address); fflush(stderr);
 	struct impl *i = transport->impl;
 	struct connect *r;
 	int rv;
@@ -176,10 +187,12 @@ static int impl_connect(struct raft_uv_transport *transport,
 	rv = uv_queue_work(i->loop, &r->work, connect_work_cb,
 			   connect_after_work_cb);
 	if (rv != 0) {
+                fprintf(stderr, "impl__connect rv:%d id:%llu %s\n", rv, id, address); fflush(stderr);
 		rv = RAFT_NOCONNECTION;
 		goto err_after_connect_alloc;
 	}
 
+        fprintf(stderr, "impl__connect rv:%d id:%llu %s\n", rv, id, address); fflush(stderr);
 	return 0;
 
 err_after_connect_alloc:
@@ -220,31 +233,37 @@ static int parse_address(const char *address, struct sockaddr_in *addr)
 
 static int default_connect(void *arg, const char *address, int *fd)
 {
+        fprintf(stderr, "default_connect address:%s\n", address); fflush(stderr);
 	struct sockaddr_in addr;
 	int rv;
 	(void)arg;
 
 	rv = parse_address(address, &addr);
 	if (rv != 0) {
+                fprintf(stderr, "default_connect parse_address failed %d address:%s\n",rv,  address); fflush(stderr);
 		return RAFT_NOCONNECTION;
 	}
 
 	*fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (*fd == -1) {
+                fprintf(stderr, "default_connect socket failed %d address:%s\n",rv,  address); fflush(stderr);
 		return RAFT_NOCONNECTION;
 	}
 
 	rv = connect(*fd, (const struct sockaddr *)&addr, sizeof addr);
 	if (rv == -1) {
+                fprintf(stderr, "default_connect connect failed %d address:%s\n",rv,  address); fflush(stderr);
 		close(*fd);
 		return RAFT_NOCONNECTION;
 	}
 
+        fprintf(stderr, "default_connect success address:%s\n", address); fflush(stderr);
 	return 0;
 }
 
 int raftProxyInit(struct raft_uv_transport *transport, struct uv_loop_s *loop)
 {
+        fprintf(stderr, "raftProxyInit\n"); fflush(stderr);
 	struct impl *i = sqlite3_malloc(sizeof *i);
 	if (i == NULL) {
 		return DQLITE_NOMEM;
@@ -272,11 +291,13 @@ void raftProxyAccept(struct raft_uv_transport *transport,
 		     const char *address,
 		     struct uv_stream_s *stream)
 {
+        fprintf(stderr, "raftProxyAccept id:%llu address:%s\n", id, address); fflush(stderr);
 	struct impl *i = transport->impl;
 	/* If the accept callback is NULL it means we were stopped. */
 	if (i->accept_cb == NULL) {
 		uv_close((struct uv_handle_s *)stream, (uv_close_cb)raft_free);
 	} else {
+                fprintf(stderr, "raftProxyAccept accept_cb id:%llu address:%s\n", id, address); fflush(stderr);
 		i->accept_cb(transport, id, address, stream);
 	}
 }
@@ -285,6 +306,7 @@ void raftProxySetConnectFunc(struct raft_uv_transport *transport,
 			     int (*f)(void *arg, const char *address, int *fd),
 			     void *arg)
 {
+        fprintf(stderr, "raftProxySetConnectFunc\n"); fflush(stderr);
 	struct impl *i = transport->impl;
 	i->connect.f = f;
 	i->connect.arg = arg;

@@ -295,28 +295,34 @@ void clientCloseRows(struct rows *rows)
 
 int clientSendAdd(struct client *c, unsigned id, const char *address)
 {
+        fprintf(stderr, "clientSendAdd id:%u address:%s\n", id, address); fflush(stderr);
 	struct request_add request;
 	request.id = id;
 	request.address = address;
 	REQUEST(add, ADD);
+        fprintf(stderr, "clientSendAdd success id:%u address:%s\n", id, address); fflush(stderr);
 	return 0;
 }
 
 int clientSendAssign(struct client *c, unsigned id, int role)
 {
+        fprintf(stderr, "clientSendAssign id:%u role:%d\n", id, role); fflush(stderr);
 	struct request_assign request;
 	(void)role;
 	/* TODO: actually send an assign request, not a legacy promote one. */
 	request.id = id;
 	REQUEST(assign, ASSIGN);
+        fprintf(stderr, "clientSendAssign success id:%u role:%d\n", id, role); fflush(stderr);
 	return 0;
 }
 
 int clientSendRemove(struct client *c, unsigned id)
 {
+        fprintf(stderr, "clientSendRemove id:%u\n", id); fflush(stderr);
 	struct request_remove request;
 	request.id = id;
 	REQUEST(remove, REMOVE);
+        fprintf(stderr, "clientSendRemove success id:%u\n", id); fflush(stderr);
 	return 0;
 }
 
