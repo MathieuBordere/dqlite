@@ -326,7 +326,11 @@ static int maybeBootstrap(dqlite_node *d,
 	rv = raft_bootstrap(&d->raft, &configuration);
 	if (rv != 0) {
 		if (rv == RAFT_CANTBOOTSTRAP) {
-			rv = 0;
+                    rv = raft_recover(&d->raft, &configuration);
+                    if (rv) {
+                        fprintf(stderr, "raft recover failed\n"); fflush(stderr);
+                        rv = DQLITE_ERROR;
+                    }
 		} else {
 			rv = DQLITE_ERROR;
 		}
